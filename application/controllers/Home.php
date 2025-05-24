@@ -29,7 +29,7 @@ class Home extends CI_Controller
         $data['title'] = 'Backward Chaining';
 
         $this->load->view('template/header', $data);
-        $this->load->view('template/sidebar', $data);
+        $this->load->view('template/sidebar2', $data);
         $this->load->view('konsultasi_bc', $data);
         $this->load->view('template/footer');
     }
@@ -97,7 +97,7 @@ class Home extends CI_Controller
         $data['title'] = 'Hasil Backward Chaining';
 
         $this->load->view('template/header', $data);
-        $this->load->view('template/sidebar', $data);
+        $this->load->view('template/sidebar2', $data);
         $this->load->view('hasil_bc', $data);
     }
 
@@ -109,7 +109,7 @@ class Home extends CI_Controller
         $data['title'] = 'Forward Chaining';
 
         $this->load->view('template/header', $data);
-        $this->load->view('template/sidebar', $data);
+        $this->load->view('template/sidebar2', $data);
         $this->load->view('konsultasi_fc', $data);
         $this->load->view('template/footer');
     }
@@ -121,47 +121,78 @@ class Home extends CI_Controller
         $nomor = $this->input->post('nomor');
         $alamat = $this->input->post('alamat');
         $gejala_input = $this->input->post('gejala');
+
+        if (!is_array($gejala_input)) {
+            $gejala_input = [];
+        }
+
         $basiskasus_detail = $this->Home_model->get_basiskasus_detail();
         $kerusakan = $this->Home_model->get_kerusakan();
-        $gejala = $this->Home_model->get_gejala();
+        $gejala_all = $this->Home_model->get_gejala();
 
         $hasil = [];
+
+        $data_hasil = [
+            'nama' => $nama,
+            'email' => $email,
+            'nomor' => $nomor,
+            'alamat' => $alamat,
+            'gejala' => implode(',', $gejala_input),
+            'kerusakan' => 'Tidak ditemukan',
+            'deskripsi_kerusakan' => 'Tidak ada deskripsi yang cocok.',
+            'solusi_kerusakan' => 'Tidak ada solusi yang direkomendasikan.',
+            'tgl_input' => date('Y-m-d H:i:s')
+        ];
+
         foreach ($kerusakan as $k) {
             $match = true;
+            $gejala_dibutuhkan_kerusakan_ini = [];
+
             foreach ($basiskasus_detail as $bkd) {
-                if ($bkd->kd_kerusakan == $k->kd_kerusakan && !in_array($bkd->kd_gejala, $gejala_input)) {
-                    $match = false;
-                    break;
+                if ($bkd->kd_kerusakan == $k->kd_kerusakan) {
+                    $gejala_dibutuhkan_kerusakan_ini[] = $bkd->kd_gejala;
                 }
             }
+
+            if (!empty($gejala_dibutuhkan_kerusakan_ini)) {
+                foreach ($gejala_dibutuhkan_kerusakan_ini as $kd_gejala_dibutuhkan) {
+                    if (!in_array($kd_gejala_dibutuhkan, $gejala_input)) {
+                        $match = false;
+                        break;
+                    }
+                }
+            } else {
+                $match = false;
+            }
+
+
             if ($match) {
                 $hasil[] = $k;
+                $data_hasil['kerusakan'] = $k->kerusakan;
+                $data_hasil['deskripsi_kerusakan'] = $k->deskripsi;
+                $data_hasil['solusi_kerusakan'] = $k->solusi;
             }
         }
 
-        foreach ($hasil as $h) {
-            $data_hasil = [
-                'nama' => $nama,
-                'email' => $email,
-                'nomor' => $nomor,
-                'alamat' => $alamat,
-                'gejala' => implode(',', $gejala_input),
-                'kerusakan' => $h->kerusakan,
-                'deskripsi_kerusakan' => $h->deskripsi,
-                'solusi_kerusakan' => $h->solusi,
-                'tgl_input' => date('Y-m-d H:i:s')
-            ];
-            $this->Home_model->save_hasil_diagnosa2($data_hasil);
+        $this->Home_model->save_hasil_diagnosa2($data_hasil);
+
+
+        $gejala_terpilih_nama_arr = [];
+        foreach ($gejala_input as $kd_g) {
+            if (isset($map_gejala_nama[$kd_g])) {
+                $gejala_terpilih_nama_arr[] = $map_gejala_nama[$kd_g];
+            }
         }
+        $data['gejala_terpilih_nama'] = $gejala_terpilih_nama_arr;
 
         $data['hasil'] = $hasil;
         $data['hasil1'] = $data_hasil;
         $data['gejala_input'] = $gejala_input;
-        $data['gejala2'] = $gejala;
+        $data['gejala2'] = $gejala_all;
         $data['title'] = 'Forward Chaining';
 
         $this->load->view('template/header', $data);
-        $this->load->view('template/sidebar', $data);
+        $this->load->view('template/sidebar2', $data);
         $this->load->view('hasil_fc', $data);
     }
 }
